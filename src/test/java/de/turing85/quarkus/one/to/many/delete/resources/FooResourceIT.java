@@ -1,24 +1,19 @@
 package de.turing85.quarkus.one.to.many.delete.resources;
 
-import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import io.quarkus.test.common.http.TestHTTPEndpoint;
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.restassured.RestAssured;
-import io.vertx.mutiny.pgclient.PgPool;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.Matchers.*;
 
-@QuarkusTest
+@QuarkusIntegrationTest
 @TestHTTPEndpoint(FooResource.class)
-class FooResourceTest {
-  @Inject
-  @SuppressWarnings("CdiInjectionPointsInspection")
-  PgPool client;
+class FooResourceIT {
 
   @Test
   void persistFoo() {
@@ -140,8 +135,23 @@ class FooResourceTest {
     final String expectedFooName = "foo3";
     final String expectedBarName = "bar3";
     // @formatter:off
-    client.query("INSERT INTO public.foo(name) VALUES ('%s')".formatted(expectedFooName))
-        .executeAndAwait();
+    RestAssured
+        .given()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body("""
+                    {
+                      "name": "%s"
+                    }
+                    """.formatted(expectedFooName))
+            .when().post()
+            .then()
+                .statusCode(is(Response.Status.CREATED.getStatusCode()))
+                .contentType(startsWith(MediaType.APPLICATION_JSON))
+                .header(
+                    HttpHeaders.LOCATION,
+                    is("%s/foos/%s"
+                        .formatted(FooResourceTest.baseUrl(), expectedFooName)))
+                .body("name", is(expectedFooName));
 
     RestAssured
         .given()
@@ -203,8 +213,22 @@ class FooResourceTest {
     // GIVEN
     final String expectedFooName = "foo4";
     // @formatter:off
-    client.query("INSERT INTO public.foo(name) VALUES ('%s')".formatted(expectedFooName))
-        .executeAndAwait();
+    RestAssured
+        .given()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body("""
+                    {
+                      "name": "%s"
+                    }
+                    """.formatted(expectedFooName))
+            .when().post()
+            .then()
+                .statusCode(is(Response.Status.CREATED.getStatusCode()))
+                .contentType(startsWith(MediaType.APPLICATION_JSON))
+                .header(
+                    HttpHeaders.LOCATION,
+                    is("%s/foos/%s".formatted(FooResourceTest.baseUrl(), expectedFooName)))
+                .body("name", is(expectedFooName));
 
     // WHEN
     RestAssured
@@ -229,15 +253,39 @@ class FooResourceTest {
     final String expectedFooName = "foo5";
     final String expectedBarName = "bar5";
     // @formatter:off
-    client.query("INSERT INTO public.foo(name) VALUES ('%s')".formatted(expectedFooName))
-        .executeAndAwait();
-    client
-        .query("""
-            INSERT INTO public.bar(name, fk_foo)
-            VALUES ('%s', (SELECT id FROM public.foo WHERE name = '%s'))
-            """
-            .formatted(expectedBarName, expectedFooName))
-        .executeAndAwait();
+    RestAssured
+        .given()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body("""
+                    {
+                      "name": "%s"
+                    }
+                    """.formatted(expectedFooName))
+            .when().post()
+            .then()
+                .statusCode(is(Response.Status.CREATED.getStatusCode()))
+                .contentType(startsWith(MediaType.APPLICATION_JSON))
+                .header(
+                    HttpHeaders.LOCATION,
+                    is("%s/foos/%s".formatted(FooResourceTest.baseUrl(), expectedFooName)))
+                .body("name", is(expectedFooName));
+    RestAssured
+        .given()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body("""
+                {
+                  "name": "%s"
+                }
+                """.formatted(expectedBarName))
+        .when().post("/%s/bars".formatted(expectedFooName))
+        .then()
+            .statusCode(is(Response.Status.CREATED.getStatusCode()))
+            .contentType(startsWith(MediaType.APPLICATION_JSON))
+            .header(
+                HttpHeaders.LOCATION,
+                is("%s/foos/%s/bars/%s"
+                    .formatted(FooResourceTest.baseUrl(), expectedFooName, expectedBarName)))
+            .body("name", is(expectedBarName));
 
     // WHEN
     RestAssured
@@ -269,10 +317,5 @@ class FooResourceTest {
             .contentType(startsWith(MediaType.APPLICATION_JSON))
             .body("", hasSize(0));
     // @formatter:on
-  }
-
-
-  static String baseUrl() {
-    return "%s:%d".formatted(RestAssured.baseURI, RestAssured.port);
   }
 }
