@@ -25,7 +25,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 @Getter
-@Setter
+@Setter(AccessLevel.PACKAGE)
 public class Bar extends PanacheEntityBase {
   @JsonIgnore
   @Id

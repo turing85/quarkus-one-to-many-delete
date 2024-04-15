@@ -101,10 +101,9 @@ public class FooResource {
     // @formatter:off
     return Foo.<Foo>find("name", fooName)
         .singleResult()
-        .onItem().invoke(foo -> foo.getBars().add(bar))
-        .onItem().invoke(bar::setFoo)
-        .onItem().transform(foo -> foo.persist())
-        .onItem().transform(foo -> bar)
+        .onItem().invoke(foo -> foo.addBar(bar))
+        .onItem().transformToUni(foo -> foo.<Foo>persist())
+        .replaceWith(bar)
         .onItem().transform(persisted -> FooResource.toCreatedResponse(
             persisted,
             URI.create("foos/%s/bars/%s".formatted(fooName, persisted.getName()))));

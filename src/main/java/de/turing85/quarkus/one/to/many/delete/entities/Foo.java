@@ -2,7 +2,7 @@ package de.turing85.quarkus.one.to.many.delete.entities;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -30,7 +30,7 @@ import lombok.extern.jackson.Jacksonized;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-@Setter
+@Setter(AccessLevel.PACKAGE)
 public class Foo extends PanacheEntityBase {
   @JsonIgnore
   @Id
@@ -54,8 +54,13 @@ public class Foo extends PanacheEntityBase {
     setBars(bars);
   }
 
-  public void setBars(List<Bar> bars) {
-    this.bars = Optional.ofNullable(bars).orElseGet(ArrayList::new);
+  void setBars(List<Bar> bars) {
+    this.bars = Objects.requireNonNull(bars);
     this.bars.forEach(bar -> bar.setFoo(this));
+  }
+
+  public void addBar(Bar bar) {
+    this.bars.add(bar);
+    bar.setFoo(this);
   }
 }
